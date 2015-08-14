@@ -1,6 +1,7 @@
 #ifndef SERENITY_ESTIMATOR_PIPELINE_HPP
 #define SERENITY_ESTIMATOR_PIPELINE_HPP
 
+#include "filters/ema.hpp"
 #include "filters/ignore_new_executors.hpp"
 #include "filters/pr_executor_pass.hpp"
 #include "filters/utilization_threshold.hpp"
@@ -60,16 +61,42 @@ class CpuEstimatorPipeline : public ResourceEstimatorPipeline {
       slackTimeSeriesExporter(),
       // Last item in pipeline.
       slackObserver(this),
-      // 4th item in pipeline.
+      // 6th item in pipeline.
       ignoreNewExecutorsFilter(&slackObserver),
-      // 3rd item in pipeline.
+      // 5rd item in pipeline.
       prExecutorPassFilter(&ignoreNewExecutorsFilter),
-      // 2nd item in pipeline.
+      // 4nd item in pipeline.
       utilizationFilter(&prExecutorPassFilter,
                         DEFAULT_UTILIZATION_THRESHOLD,
                         Tag(RESOURCE_ESTIMATOR, "utilizationFilter")),
+
+      //2nd and 3th item - CPU usage filters
+      sysCpuUsageSmoother(
+          &utilizationFilter,
+          [](const ResourceUsage_Executor& prev,
+             const ResourceUsage_Executor& curr) -> Try<double_t> { return
+              curr.statistics().cpus_system_time_secs(); },
+          [](const double_t value,
+             ResourceUsage_Executor* outExec) -> Try<Nothing> {
+            outExec->mutable_statistics()->set_cpus_system_time_secs(value);
+            return Nothing(); },
+          0.9,  // very small smoothing
+          Tag(RESOURCE_ESTIMATOR, "usrCpuUsageSmoother")),
+
+      usrCpuUsageSmoother(
+          &sysCpuUsageSmoother,
+          [](const ResourceUsage_Executor& prev,
+             const ResourceUsage_Executor& curr) -> Try<double_t> { return
+              curr.statistics().cpus_user_time_secs(); },
+          [](const double_t value,
+             ResourceUsage_Executor* outExec) -> Try<Nothing> {
+            outExec->mutable_statistics()->set_cpus_user_time_secs(value);
+            return Nothing(); },
+          0.9,  // very small smoothing
+          Tag(RESOURCE_ESTIMATOR, "usrCpuUsageSmoother")),
+
       // First item in pipeline.
-      valveFilter(&utilizationFilter,
+      valveFilter(&usrCpuUsageSmoother,
                   _valveOpened,
                   Tag(RESOURCE_ESTIMATOR, "valveFilter")) {
     // NOTE(bplotka): Currently we wait one minute for testing purposes.
@@ -85,6 +112,9 @@ class CpuEstimatorPipeline : public ResourceEstimatorPipeline {
 
  private:
   // --- Filters ---
+  EMAFilter sysCpuUsageSmoother;
+  EMAFilter usrCpuUsageSmoother;
+
   PrExecutorPassFilter prExecutorPassFilter;
   IgnoreNewExecutorsFilter ignoreNewExecutorsFilter;
   UtilizationThresholdFilter utilizationFilter;
