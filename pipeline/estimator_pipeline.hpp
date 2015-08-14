@@ -14,6 +14,7 @@
 
 #include "pipeline/pipeline.hpp"
 
+#include "serenity/default_vars.hpp"
 #include "serenity/serenity.hpp"
 
 #include "time_series_export/slack_ts_export.hpp"
@@ -55,8 +56,11 @@ using ResourceEstimatorPipeline = Pipeline<ResourceUsage, Resources>;
  */
 class CpuEstimatorPipeline : public ResourceEstimatorPipeline {
  public:
-  explicit CpuEstimatorPipeline(bool _visualisation = true,
-                                bool _valveOpened = true) :
+  explicit CpuEstimatorPipeline(
+      double_t _newExecutorsThreshold = new_executor::DEFAULT_THRESHOLD_SEC,
+      double_t _utilizationThreshold = utilization::DEFAULT_THRESHOLD,
+      bool _visualisation = true,
+      bool _valveOpened = true) :
       // Time series exporters.
       slackTimeSeriesExporter(),
       // Last item in pipeline.
@@ -66,9 +70,10 @@ class CpuEstimatorPipeline : public ResourceEstimatorPipeline {
       // 5rd item in pipeline.
       prExecutorPassFilter(&ignoreNewExecutorsFilter),
       // 4nd item in pipeline.
-      utilizationFilter(&prExecutorPassFilter,
-                        DEFAULT_UTILIZATION_THRESHOLD,
-                        Tag(RESOURCE_ESTIMATOR, "utilizationFilter")),
+      utilizationFilter(
+          &prExecutorPassFilter,
+          _utilizationThreshold,
+          Tag(RESOURCE_ESTIMATOR, "utilizationFilter")),
 
       //2nd and 3th item - CPU usage filters
       sysCpuUsageSmoother(
@@ -96,12 +101,14 @@ class CpuEstimatorPipeline : public ResourceEstimatorPipeline {
           Tag(RESOURCE_ESTIMATOR, "usrCpuUsageSmoother")),
 
       // First item in pipeline.
-      valveFilter(&usrCpuUsageSmoother,
-                  _valveOpened,
-                  Tag(RESOURCE_ESTIMATOR, "valveFilter")) {
+      valveFilter(
+          &usrCpuUsageSmoother,
+          &utilizationFilter,
+          _valveOpened,
+          Tag(RESOURCE_ESTIMATOR, "valveFilter")) {
     // NOTE(bplotka): Currently we wait one minute for testing purposes.
     // However in production env 5 minutes is a better value.
-    this->ignoreNewExecutorsFilter.setThreshold(60);
+    this->ignoreNewExecutorsFilter.setThreshold(_newExecutorsThreshold);
     // Setup beginning producer.
     this->addConsumer(&valveFilter);
     // Setup Time Series Exports
