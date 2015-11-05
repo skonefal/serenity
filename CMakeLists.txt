@@ -95,8 +95,8 @@ set(SERENITY_SOURCES
     src/filters/executor_age.cpp
     src/observers/qos_correction.cpp
     src/observers/slack_resource.cpp
-        src/observers/strategies/kill_all.cpp
-        src/observers/strategies/seniority.cpp
+    src/observers/strategies/kill_all.cpp
+    src/observers/strategies/seniority.cpp
     src/qos_controller/serenity_controller.cpp
     src/qos_controller/serenity_controller_module.cpp
     src/serenity/agent_utils.cpp

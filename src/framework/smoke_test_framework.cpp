@@ -144,56 +144,57 @@ public:
       Resources remaining = offer.resources();
       vector<TaskInfo> tasks;
 
-      SmokeJob* job = nullptr;
-      if (!allLimitedJobsScheduled()) {
-        // Get job from limited job vector.
-        job = &limitedJobs[jobsScheduled];
-      } else {
-        // Get job from unlimited job vector (only first).
-        job = &endlessJobs[0];
-      }
+//      SmokeJob* job = nullptr;
+//      if (!allLimitedJobsScheduled()) {
+//        // Get job from limited job vector.
+//        job = &limitedJobs[jobsScheduled];
+//      } else {
+//        // Get job from unlimited job vector (only first).
+//        job = &endlessJobs[0];
+//      }
 
-      if (job->targetHostname.isSome() &&
-          job->targetHostname.get().compare(offer.hostname()) != 0){
-        // Host don't match.
-        LOG(INFO) << "Offered host " << offer.hostname()
-        << " not matched with target " << job->targetHostname.get()
-        << ". Omitting.";
-        continue;
-      }
-
-      while (true) {
-        // Check if there are still resources for next task.
-        if (!remaining.contains(job->taskResources)) {
-          LOG(INFO) << "Not enough resources for "
-          << stringify(jobsScheduled) + "_"
-             + stringify(job->tasksLaunched)
-          << " job. Needed: " << job->taskResources
-          << " Offered: " << remaining;
-          break;
+      foreach (auto& job, endlessJobs) {
+        if (job.targetHostname.isSome() &&
+            job.targetHostname.get().compare(offer.hostname()) != 0){
+          // Host don't match.
+          LOG(INFO) << "Offered host " << offer.hostname()
+          << " not matched with target " << job.targetHostname.get()
+          << ". Omitting.";
+          continue;
         }
 
-        remaining -= job->taskResources;
+        while (true) {
+          // Check if there are still resources for next task.
+          if (!remaining.contains(job.taskResources)) {
+            LOG(INFO) << "Not enough resources for "
+            << stringify(jobsScheduled) + "_"
+               + stringify(job.tasksLaunched)
+            << " job. Needed: " << job.taskResources
+            << " Offered: " << remaining;
+            break;
+          }
 
-        tasks.push_back(
-          job->createTask(jobsScheduled, offer.slave_id()));
+          remaining -= job.taskResources;
 
-        this->activeTasks.insert(tasks.back().task_id());
-        job->tasksLaunched++;
-        tasksLaunched++;
-        LOG(INFO) << "Launching " << tasks.back().task_id();
+          tasks.push_back(
+            job.createTask(jobsScheduled, offer.slave_id()));
 
-        if (!job->isEndless() &&
-            job->tasksLaunched  >= job->totalTasks.get()) {
-          // In case of limited jobs stop when scheduled totalTasks.
-          job->scheduled = true;
+          this->activeTasks.insert(tasks.back().task_id());
+          job.tasksLaunched++;
+          tasksLaunched++;
+          LOG(INFO) << "Launching " << tasks.back().task_id();
 
-          this->jobsScheduled++;
-          break;
+//          if (!job.isEndless() &&
+//              job.tasksLaunched  >= job.totalTasks.get()) {
+//            // In case of limited jobs stop when scheduled totalTasks.
+//            job.scheduled = true;
+//
+//            this.jobsScheduled++;
+//            break;
+//          }
         }
+        driver->acceptOffers({offer.id()}, {LAUNCH(tasks)});
       }
-
-      driver->acceptOffers({offer.id()}, {LAUNCH(tasks)});
     }
   }
 
