@@ -112,11 +112,13 @@ set(SERENITY_SOURCES
     src/contention_detectors/overload.cpp
     src/contention_detectors/signal_based.cpp
     src/contention_detectors/signal_analyzers/drop.cpp
+    src/filters/signal_filter/signal_accessor_factory.cpp
     src/filters/cumulative.cpp
     src/filters/ema.cpp
     src/filters/executor_age.cpp
     src/filters/ignore_new_executors.cpp
     src/filters/pr_executor_pass.cpp
+    src/filters/signal_filter.cpp
     src/filters/too_low_usage.cpp
     src/filters/utilization_threshold.cpp
     src/filters/valve.cpp
@@ -146,6 +148,7 @@ set(SERENITY_TEST_SOURCES
     src/tests/filters/correction_merger_test.cpp
     src/tests/filters/ema_test.cpp
     src/tests/filters/ignore_new_executors_test.cpp
+    src/tests/filters/signal_filter_test.cpp
     src/tests/filters/pr_executor_pass_test.cpp
     src/tests/filters/utilization_threshold_test.cpp
     src/tests/filters/valve_test.cpp

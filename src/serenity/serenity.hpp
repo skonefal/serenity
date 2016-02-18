@@ -3,8 +3,11 @@
 
 #include <string>
 #include <vector>
+#include <ostream>
 
 #include "glog/logging.h"
+
+#include "serenity/tag.hpp"
 
 #include "stout/nothing.hpp"
 #include "stout/try.hpp"
@@ -12,11 +15,14 @@
 namespace mesos {
 namespace serenity {
 
+#define SERENITY_LOG(severity) LOG(severity) << tag
+
 class BaseFilter {
   template <typename T>
   friend class Consumer;
   template <typename T>
   friend class Producer;
+
  protected:
   /**
    * Function invoked when filter consumes all products in iteration.
@@ -211,59 +217,6 @@ class Producer : virtual public BaseFilter {
   }
 
   std::vector<Consumer<T>*> consumers;
-};
-
-
-enum ModuleType {
-  RESOURCE_ESTIMATOR,
-  QOS_CONTROLLER,
-  UNDEFINED,
-};
-
-#define SERENITY_LOG(severity) LOG(severity) << tag.NAME()
-
-// TODO(skonefal): Tag class should overload operator <<
-class Tag {
- public:
-  Tag(const ModuleType& _type, const std::string& _name)
-      : type(_type) {
-    this->name = getPrefix() + ": ";
-  }
-
-  explicit Tag(const std::string& _name)
-    : type(UNDEFINED) {
-    std::string prefix = getPrefix();
-    this->name = prefix + _name + ": ";
-  }
-
-  const inline std::string NAME() const {
-    return name;
-  }
-
-  const inline ModuleType TYPE() const {
-    return type;
-  }
-
- private:
-  const std::string getPrefix() {
-    std::string prefix;
-    switch (this->type) {
-      case RESOURCE_ESTIMATOR:
-        prefix = "[SerenityEstimator] ";;
-        break;
-      case QOS_CONTROLLER:
-        prefix = "[SerenityQoS] ";
-        break;
-      default:
-        prefix = "[Serenity] ";
-        break;
-    }
-
-    return prefix;
-  }
-
-  const ModuleType type;
-  std::string name;
 };
 
 }  // namespace serenity
