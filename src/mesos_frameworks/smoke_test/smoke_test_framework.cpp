@@ -117,28 +117,38 @@ public:
     for (std::shared_ptr<SmokeJob> job : jobs) {
       sendToInflux(Series::RUNNING_TASKS,
                    job->name,
-                   job->runningTasks);
+                   job->runningTasks,
+                   job->targetHostname);
 
       sendToInflux(Series::REVOKED_TASKS,
                    job->name,
-                   job->revokedTasks);
+                   job->revokedTasks,
+                   job->targetHostname);
 
       sendToInflux(Series::FINISHED_TASKS,
                    job->name,
-                   job->finishedTasks);
+                   job->finishedTasks,
+                   job->targetHostname);
 
       sendToInflux(Series::FAILED_TASKS,
                    job->name,
-                   job->failedTasks);
+                   job->failedTasks,
+                   job->targetHostname);
     }
   }
 
   // TODO(bplotka): Add hostname.
   void sendToInflux(const Series series,
                     const std::string& taskName,
-                    const int64_t value) {
+                    const int64_t value,
+                    const Option<std::string> targetHostname) {
     TimeSeriesRecord record(series, value);
     record.setTag(TsTag::TASK_NAME, taskName);
+
+    if(targetHostname.isSome()) {
+      record.setTag(TsTag::HOSTNAME, targetHostname.get());
+    }
+
     dbBackend->PutMetric(record);
   }
 
