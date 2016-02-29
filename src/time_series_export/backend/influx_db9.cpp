@@ -45,6 +45,9 @@ const curl_easy InfluxDb9Backend::prepareRequest(
                                           content.size()));
   easy.add(curl_pair<CURLoption, std::string>(CURLOPT_POSTFIELDS, content));
 
+  LOG(INFO) << "Sending Time Series data to: " << url << "\n"
+            << "Content: " << content;
+
   return easy;
 }
 
